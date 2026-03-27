@@ -26,6 +26,8 @@ bool _checkStateTransitionAllowed(T oldState, T newState, T allowedOldState, T a
 
 #define SimpleStateMachineCallbackStart(STATE_TYPE) \
     [](STATE_TYPE oldState, STATE_TYPE newState)
+#define SimpleStateMachineNextStateCallbackStart(STATE_TYPE) \
+    [](STATE_TYPE oldState)
 
 template <typename T>
 using SimpleStateMachineCallback = bool (*)(T oldState, T newState);

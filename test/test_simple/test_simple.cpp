@@ -44,10 +44,42 @@ void simple_force_state_test(){
         SimpleStateMachineAllowedTransition(SomeState::Running, SomeState::Paused);
         SimpleStateMachineAllowedTransitionsEnd();
     });
+    // should ignore allowed transitions and force the state
     mainStateMachine.forceState(SomeState::Paused);
     TEST_ASSERT_EQUAL(SomeState::Paused, mainStateMachine.getState());
+    // should ignore allowed transitions and force the state
     mainStateMachine.forceState(SomeState::Idle);
     TEST_ASSERT_EQUAL(SomeState::Idle, mainStateMachine.getState());
+}
+
+void simple_next_state_test(){
+    enum class SomeState: uint8_t {
+        Idle,
+        Running,
+        Paused
+    };
+    SimpleStateMachineCallback<SomeState> transitions = SimpleStateMachineCallbackStart(SomeState) {
+        SimpleStateMachineAllowedTransition(SomeState::Idle, SomeState::Running);
+        SimpleStateMachineAllowedTransition(SomeState::Running, SomeState::Paused);
+        SimpleStateMachineAllowedTransition(SomeState::Paused, SomeState::Idle);
+        SimpleStateMachineAllowedTransitionsEnd();
+    };
+    SimpleStateMachine<SomeState> mainStateMachine(SomeState::Idle, transitions, SimpleStateMachineNextStateCallbackStart(SomeState) {
+        SimpleStateMachineNextState(SomeState::Idle, SomeState::Running);
+        SimpleStateMachineNextState(SomeState::Running, SomeState::Paused);
+        SimpleStateMachineNextState(SomeState::Paused, SomeState::Idle);
+        SimpleStateMachineNextStateEnd();
+    });
+    TEST_ASSERT_TRUE(mainStateMachine.transitNext());
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+    TEST_ASSERT_TRUE(mainStateMachine.transitNext());
+    TEST_ASSERT_EQUAL(SomeState::Paused, mainStateMachine.getState());
+    TEST_ASSERT_TRUE(mainStateMachine.transitNext());
+    TEST_ASSERT_EQUAL(SomeState::Idle, mainStateMachine.getState());
+    // Test transitNext with no next state callback defined
+    SimpleStateMachine<SomeState> noNextStateMachine(SomeState::Idle);
+    TEST_ASSERT_FALSE(noNextStateMachine.transitNext());
+    TEST_ASSERT_EQUAL(SomeState::Idle, noNextStateMachine.getState());
 }
 
 void setUp(void)
@@ -59,6 +91,7 @@ int main(){
     UNITY_BEGIN();
     RUN_TEST(simple_state_machine_test);
     RUN_TEST(simple_force_state_test);
+    RUN_TEST(simple_next_state_test);
     UNITY_END();
     return 0;
 }
