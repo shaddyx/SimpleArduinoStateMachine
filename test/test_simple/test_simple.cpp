@@ -82,6 +82,32 @@ void simple_next_state_test(){
     TEST_ASSERT_EQUAL(SomeState::Idle, noNextStateMachine.getState());
 }
 
+// test state changed callback
+
+void simple_state_changed_callback_test(){
+    enum class SomeState: uint8_t {
+        Idle,
+        Running,
+        Paused
+    };
+    SomeState lastOldState = SomeState::Idle;
+    SomeState lastNewState = SomeState::Idle;
+    SimpleStateMachine<SomeState> mainStateMachine(SomeState::Idle, SimpleStateMachineCallbackStart(SomeState) {
+        SimpleStateMachineAllowedTransition(SomeState::Idle, SomeState::Running);
+        SimpleStateMachineAllowedTransition(SomeState::Running, SomeState::Paused);
+        SimpleStateMachineAllowedTransitionsEnd();
+    }, nullptr, [&lastOldState, &lastNewState](SomeState oldState, SomeState newState) {
+        lastOldState = oldState;
+        lastNewState = newState;
+    });
+    mainStateMachine.transit(SomeState::Running);
+    TEST_ASSERT_EQUAL(SomeState::Idle, lastOldState);
+    TEST_ASSERT_EQUAL(SomeState::Running, lastNewState);
+    mainStateMachine.transit(SomeState::Paused);
+    TEST_ASSERT_EQUAL(SomeState::Running, lastOldState);
+    TEST_ASSERT_EQUAL(SomeState::Paused, lastNewState);
+}
+
 void setUp(void)
 {
     ArduinoFakeReset();
@@ -92,6 +118,7 @@ int main(){
     RUN_TEST(simple_state_machine_test);
     RUN_TEST(simple_force_state_test);
     RUN_TEST(simple_next_state_test);
+    RUN_TEST(simple_state_changed_callback_test);
     UNITY_END();
     return 0;
 }
