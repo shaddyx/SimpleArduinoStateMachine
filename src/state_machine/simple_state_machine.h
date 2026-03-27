@@ -1,6 +1,5 @@
 #pragma once
 #include <Arduino.h>
-#include <functional>
 
 template <typename T>
 bool _checkStateTransitionAllowed(T oldState, T newState, T allowedOldState, T allowedNewState)
@@ -34,13 +33,13 @@ bool _checkStateTransitionAllowed(T oldState, T newState, T allowedOldState, T a
     [](STATE_TYPE oldState)
 
 template <typename T>
-using SimpleStateMachineCallback = std::function<bool(T oldState, T newState)>;
+using SimpleStateMachineCallback = bool (*)(T oldState, T newState);
 
 template <typename T>
-using SimpleStateMachineNextStateCallback = std::function<T(T oldState)>;
+using SimpleStateMachineNextStateCallback = T (*)(T oldState);
 
 template <typename T>
-using StateChangedCallback = std::function<void(T oldState, T newState)>;
+using StateChangedCallback = void (*)(T oldState, T newState);
 
 template <typename T>
 class SimpleStateMachine

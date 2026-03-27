@@ -7,6 +7,7 @@ The library gives you:
 - A generic `SimpleStateMachine<T>` class
 - Optional transition validation callback
 - Optional next-state callback for deterministic state flow
+- Optional state-changed callback when transition succeeds
 - Helper macros to keep transition rules readable
 
 ## Features
@@ -15,6 +16,7 @@ The library gives you:
 - Works with strongly-typed enums (`enum class`)
 - Optional guard function to allow/reject transitions
 - Optional next-state resolver used by `transitNext()`
+- Optional state-changed notification callback
 - Force state override API for recovery/manual control
 - Lightweight and suitable for embedded projects
 
@@ -77,6 +79,9 @@ using SimpleStateMachineCallback = bool (*)(T oldState, T newState);
 
 template <typename T>
 using SimpleStateMachineNextStateCallback = T (*)(T oldState);
+
+template <typename T>
+using StateChangedCallback = void (*)(T oldState, T newState);
 ```
 
 ### Constructor
@@ -85,13 +90,15 @@ using SimpleStateMachineNextStateCallback = T (*)(T oldState);
 SimpleStateMachine(
 		T initialState,
 		SimpleStateMachineCallback<T> callback = nullptr,
-		SimpleStateMachineNextStateCallback<T> nextStateCallback = nullptr
+		SimpleStateMachineNextStateCallback<T> nextStateCallback = nullptr,
+		StateChangedCallback<T> stateChangedCallback = nullptr
 )
 ```
 
 - `initialState`: initial current state
 - `callback`: optional transition validator
 - `nextStateCallback`: optional resolver used by `transitNext()`
+- `stateChangedCallback`: optional callback invoked on successful transition (`oldState`, `newState`)
 
 ### Methods
 
@@ -115,6 +122,8 @@ SimpleStateMachine(
 
 - `void setNextStateCallback(SimpleStateMachineNextStateCallback<T> newNextStateCallback)`
 	- Updates next-state callback at runtime.
+
+Note: there is currently no dedicated setter for `stateChangedCallback`; set it through the constructor.
 
 ## Helper Macros
 
@@ -163,6 +172,36 @@ SimpleStateMachineNextStateCallbackStart(MyState) {
 }
 ```
 
+### State-changed callback helper
+
+- `SimpleStateMachineChangedCallbackStart(STATE_TYPE)`
+	- Starts a lambda with signature `(STATE_TYPE oldState, STATE_TYPE newState)`
+
+Example with a normal function:
+
+```cpp
+enum class MyState : uint8_t { Idle, Running, Paused };
+
+MyState lastOldState = MyState::Idle;
+MyState lastNewState = MyState::Idle;
+
+void onStateChanged(MyState oldState, MyState newState) {
+		lastOldState = oldState;
+		lastNewState = newState;
+}
+
+SimpleStateMachine<MyState> sm(
+		MyState::Idle,
+		SimpleStateMachineCallbackStart(MyState) {
+				SimpleStateMachineAllowedTransition(MyState::Idle, MyState::Running);
+				SimpleStateMachineAllowedTransition(MyState::Running, MyState::Paused);
+				SimpleStateMachineAllowedTransitionsEnd();
+		},
+		nullptr,
+		onStateChanged
+);
+```
+
 ## Full Example with transitNext()
 
 ```cpp
@@ -205,6 +244,8 @@ pio test -e local
 
 - If no transition callback is provided, `transit()` always updates state.
 - If no next-state callback is provided, `transitNext()` returns `false` and does not modify state.
+- `stateChangedCallback` uses a function pointer type, so capturing lambdas are not accepted.
+- `stateChangedCallback` is invoked in the successful validated-transition path.
 - `forceState()` bypasses transition checks and should be used carefully.
 - Since the implementation is template-based in a header, `simple_state_machine.cpp` can remain empty.
 
