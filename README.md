@@ -111,6 +111,10 @@ SimpleStateMachine(
 	- Then calls `transit(target)`.
 	- Returns `false` if no next-state callback is set.
 
+- `bool transitIfState(T expectedCurrentState, T newState)`
+	- Calls `transit(newState)` only if the current state equals `expectedCurrentState`.
+	- Returns `false` when current state does not match `expectedCurrentState`.
+
 - `T getState() const`
 	- Returns the current state.
 
@@ -228,6 +232,30 @@ void loop() {
 }
 ```
 
+## Example with transitIfState()
+
+```cpp
+enum class MyState : uint8_t { Idle, Running, Paused };
+
+SimpleStateMachine<MyState> sm(
+		MyState::Idle,
+		SimpleStateMachineCallbackStart(MyState) {
+				SimpleStateMachineAllowedTransition(MyState::Idle, MyState::Running);
+				SimpleStateMachineAllowedTransition(MyState::Running, MyState::Paused);
+				SimpleStateMachineAllowedTransitionsEnd();
+		}
+);
+
+// true: current state is Idle
+bool movedToRunning = sm.transitIfState(MyState::Idle, MyState::Running);
+
+// false: current state is Running, not Idle
+bool movedToPausedFromIdle = sm.transitIfState(MyState::Idle, MyState::Paused);
+
+// true: current state is Running
+bool movedToPaused = sm.transitIfState(MyState::Running, MyState::Paused);
+```
+
 ## Testing
 
 This repository includes Unity-based tests in:
@@ -244,6 +272,7 @@ pio test -e local
 
 - If no transition callback is provided, `transit()` always updates state.
 - If no next-state callback is provided, `transitNext()` returns `false` and does not modify state.
+- `transitIfState()` first checks current state equality, then applies normal `transit()` rules.
 - `stateChangedCallback` uses a function pointer type, so capturing lambdas are not accepted.
 - `stateChangedCallback` is invoked in the successful validated-transition path.
 - `forceState()` bypasses transition checks and should be used carefully.
@@ -251,4 +280,4 @@ pio test -e local
 
 ## License
 
-Add your preferred license here (for example, MIT).
+MIT

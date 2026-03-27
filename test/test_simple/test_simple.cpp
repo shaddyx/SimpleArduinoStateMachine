@@ -119,6 +119,27 @@ void simple_state_changed_callback_test(){
     TEST_ASSERT_EQUAL(SomeStateForChangeTest::Paused, lastNewState);
 }
 
+void simple_state_transit_if_state_test(){
+    enum class SomeState: uint8_t {
+        Idle,
+        Running,
+        Paused
+    };
+    SimpleStateMachine<SomeState> mainStateMachine(SomeState::Idle, SimpleStateMachineCallbackStart(SomeState) {
+        SimpleStateMachineAllowedTransition(SomeState::Idle, SomeState::Running);
+        SimpleStateMachineAllowedTransition(SomeState::Running, SomeState::Paused);
+        SimpleStateMachineAllowedTransitionsEnd();
+    });
+    // Should transit because current state is Idle
+    TEST_ASSERT_TRUE(mainStateMachine.transitIfState(SomeState::Idle, SomeState::Running));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+    // Should not transit because current state is Running, not Idle
+    TEST_ASSERT_FALSE(mainStateMachine.transitIfState(SomeState::Idle, SomeState::Paused));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+    // Should transit because current state is Running
+    TEST_ASSERT_TRUE(mainStateMachine.transitIfState(SomeState::Running, SomeState::Paused));
+    TEST_ASSERT_EQUAL(SomeState::Paused, mainStateMachine.getState());
+}
 void setUp(void)
 {
     ArduinoFakeReset();
@@ -130,6 +151,7 @@ int main(){
     RUN_TEST(simple_force_state_test);
     RUN_TEST(simple_next_state_test);
     RUN_TEST(simple_state_changed_callback_test);
+    RUN_TEST(simple_state_transit_if_state_test);
     UNITY_END();
     return 0;
 }

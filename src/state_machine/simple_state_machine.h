@@ -83,6 +83,15 @@ public:
         return true;
     }
 
+    bool transitIfState(T expectedCurrentState, T newState)
+    {
+        if (state == expectedCurrentState)
+        {
+            return transit(newState);
+        }
+        return false; // Current state does not match expected state
+    }
+
     bool transitNext()
     {
         if (nextStateCallback)
