@@ -92,6 +92,24 @@ public:
         return false; // Current state does not match expected state
     }
 
+    bool transitIfCondition(bool condition, T newState)
+    {
+        if (condition)
+        {
+            return transit(newState);
+        }
+        return false; // Condition not met
+    }
+
+    bool transitIfConditionAndState(bool condition, T expectedCurrentState, T newState)
+    {
+        if (condition && state == expectedCurrentState)
+        {
+            return transit(newState);
+        }
+        return false; // Condition not met or current state does not match expected state
+    }
+
     bool transitNext()
     {
         if (nextStateCallback)

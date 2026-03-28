@@ -140,6 +140,61 @@ void simple_state_transit_if_state_test(){
     TEST_ASSERT_TRUE(mainStateMachine.transitIfState(SomeState::Running, SomeState::Paused));
     TEST_ASSERT_EQUAL(SomeState::Paused, mainStateMachine.getState());
 }
+
+void simple_state_transit_if_condition_test(){
+    enum class SomeState: uint8_t {
+        Idle,
+        Running,
+        Paused
+    };
+    SimpleStateMachine<SomeState> mainStateMachine(SomeState::Idle, SimpleStateMachineCallbackStart(SomeState) {
+        SimpleStateMachineAllowedTransition(SomeState::Idle, SomeState::Running);
+        SimpleStateMachineAllowedTransition(SomeState::Running, SomeState::Paused);
+        SimpleStateMachineAllowedTransitionsEnd();
+    });
+
+    // Condition true, valid transition
+    TEST_ASSERT_TRUE(mainStateMachine.transitIfCondition(true, SomeState::Running));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+
+    // Condition false, transition must not happen
+    TEST_ASSERT_FALSE(mainStateMachine.transitIfCondition(false, SomeState::Paused));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+
+    // Condition true but transition invalid by callback rules
+    TEST_ASSERT_FALSE(mainStateMachine.transitIfCondition(true, SomeState::Idle));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+}
+
+void simple_state_transit_if_condition_and_state_test(){
+    enum class SomeState: uint8_t {
+        Idle,
+        Running,
+        Paused
+    };
+    SimpleStateMachine<SomeState> mainStateMachine(SomeState::Idle, SimpleStateMachineCallbackStart(SomeState) {
+        SimpleStateMachineAllowedTransition(SomeState::Idle, SomeState::Running);
+        SimpleStateMachineAllowedTransition(SomeState::Running, SomeState::Paused);
+        SimpleStateMachineAllowedTransitionsEnd();
+    });
+
+    // Both checks pass
+    TEST_ASSERT_TRUE(mainStateMachine.transitIfConditionAndState(true, SomeState::Idle, SomeState::Running));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+
+    // Condition false
+    TEST_ASSERT_FALSE(mainStateMachine.transitIfConditionAndState(false, SomeState::Running, SomeState::Paused));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+
+    // State mismatch
+    TEST_ASSERT_FALSE(mainStateMachine.transitIfConditionAndState(true, SomeState::Idle, SomeState::Paused));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+
+    // Condition and state pass, allowed transition succeeds
+    TEST_ASSERT_TRUE(mainStateMachine.transitIfConditionAndState(true, SomeState::Running, SomeState::Paused));
+    TEST_ASSERT_EQUAL(SomeState::Paused, mainStateMachine.getState());
+}
+
 void setUp(void)
 {
     ArduinoFakeReset();
@@ -152,6 +207,8 @@ int main(){
     RUN_TEST(simple_next_state_test);
     RUN_TEST(simple_state_changed_callback_test);
     RUN_TEST(simple_state_transit_if_state_test);
+    RUN_TEST(simple_state_transit_if_condition_test);
+    RUN_TEST(simple_state_transit_if_condition_and_state_test);
     UNITY_END();
     return 0;
 }

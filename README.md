@@ -115,6 +115,16 @@ SimpleStateMachine(
 	- Calls `transit(newState)` only if the current state equals `expectedCurrentState`.
 	- Returns `false` when current state does not match `expectedCurrentState`.
 
+- `bool transitIfCondition(bool condition, T newState)`
+	- Calls `transit(newState)` only when `condition` is `true`.
+	- Returns `false` when `condition` is `false`.
+
+- `bool transitIfConditionAndState(bool condition, T expectedCurrentState, T newState)`
+	- Calls `transit(newState)` only when both checks pass:
+		- `condition == true`
+		- current state equals `expectedCurrentState`
+	- Returns `false` when either check fails.
+
 - `T getState() const`
 	- Returns the current state.
 
@@ -256,6 +266,48 @@ bool movedToPausedFromIdle = sm.transitIfState(MyState::Idle, MyState::Paused);
 bool movedToPaused = sm.transitIfState(MyState::Running, MyState::Paused);
 ```
 
+## Example with transitIfCondition()
+
+```cpp
+enum class MyState : uint8_t { Idle, Running, Paused };
+
+SimpleStateMachine<MyState> sm(
+		MyState::Idle,
+		SimpleStateMachineCallbackStart(MyState) {
+				SimpleStateMachineAllowedTransition(MyState::Idle, MyState::Running);
+				SimpleStateMachineAllowedTransition(MyState::Running, MyState::Paused);
+				SimpleStateMachineAllowedTransitionsEnd();
+		}
+);
+
+bool sensorReady = true;
+bool moved = sm.transitIfCondition(sensorReady, MyState::Running); // true
+
+sensorReady = false;
+bool notMoved = sm.transitIfCondition(sensorReady, MyState::Paused); // false
+```
+
+## Example with transitIfConditionAndState()
+
+```cpp
+enum class MyState : uint8_t { Idle, Running, Paused };
+
+SimpleStateMachine<MyState> sm(
+		MyState::Idle,
+		SimpleStateMachineCallbackStart(MyState) {
+				SimpleStateMachineAllowedTransition(MyState::Idle, MyState::Running);
+				SimpleStateMachineAllowedTransition(MyState::Running, MyState::Paused);
+				SimpleStateMachineAllowedTransitionsEnd();
+		}
+);
+
+bool canRun = true;
+bool movedToRunning = sm.transitIfConditionAndState(canRun, MyState::Idle, MyState::Running); // true
+
+bool movedToPausedWrongState = sm.transitIfConditionAndState(true, MyState::Idle, MyState::Paused); // false
+bool movedToPaused = sm.transitIfConditionAndState(true, MyState::Running, MyState::Paused); // true
+```
+
 ## Testing
 
 This repository includes Unity-based tests in:
@@ -273,6 +325,8 @@ pio test -e local
 - If no transition callback is provided, `transit()` always updates state.
 - If no next-state callback is provided, `transitNext()` returns `false` and does not modify state.
 - `transitIfState()` first checks current state equality, then applies normal `transit()` rules.
+- `transitIfCondition()` first checks the boolean condition, then applies normal `transit()` rules.
+- `transitIfConditionAndState()` checks both condition and current state before applying normal `transit()` rules.
 - `stateChangedCallback` uses a function pointer type, so capturing lambdas are not accepted.
 - `stateChangedCallback` is invoked in the successful validated-transition path.
 - `forceState()` bypasses transition checks and should be used carefully.
