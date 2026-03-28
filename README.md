@@ -111,6 +111,25 @@ SimpleStateMachine(
 	- Then calls `transit(target)`.
 	- Returns `false` if no next-state callback is set.
 
+- `bool transitNextIfCondition(bool condition)`
+	- Calls `nextStateCallback(currentState)` and then `transit(target)` only when:
+		- `condition == true`
+		- `nextStateCallback` is set
+	- Returns `false` when condition is `false` or no next-state callback is set.
+
+- `bool transitNextIfState(T expectedCurrentState)`
+	- Calls `nextStateCallback(currentState)` and then `transit(target)` only when:
+		- current state equals `expectedCurrentState`
+		- `nextStateCallback` is set
+	- Returns `false` when state does not match or no next-state callback is set.
+
+- `bool transitNextIfConditionAndState(bool condition, T expectedCurrentState)`
+	- Calls `nextStateCallback(currentState)` and then `transit(target)` only when all checks pass:
+		- `condition == true`
+		- current state equals `expectedCurrentState`
+		- `nextStateCallback` is set
+	- Returns `false` when any check fails.
+
 - `bool transitIfState(T expectedCurrentState, T newState)`
 	- Calls `transit(newState)` only if the current state equals `expectedCurrentState`.
 	- Returns `false` when current state does not match `expectedCurrentState`.
@@ -308,6 +327,69 @@ bool movedToPausedWrongState = sm.transitIfConditionAndState(true, MyState::Idle
 bool movedToPaused = sm.transitIfConditionAndState(true, MyState::Running, MyState::Paused); // true
 ```
 
+## Example with transitNextIfCondition()
+
+```cpp
+enum class MyState : uint8_t { Idle, Running, Paused };
+
+SimpleStateMachine<MyState> sm(
+		MyState::Idle,
+		SimpleStateMachineCallbackStart(MyState) {
+				SimpleStateMachineAllowedTransition(MyState::Idle, MyState::Running);
+				SimpleStateMachineAllowedTransition(MyState::Running, MyState::Paused);
+				SimpleStateMachineAllowedTransition(MyState::Paused, MyState::Idle);
+				SimpleStateMachineAllowedTransitionsEnd();
+		},
+		SimpleStateMachineNextStateCallbackStart(MyState) {
+				SimpleStateMachineNextState(MyState::Idle, MyState::Running);
+				SimpleStateMachineNextState(MyState::Running, MyState::Paused);
+				SimpleStateMachineNextState(MyState::Paused, MyState::Idle);
+				SimpleStateMachineNextStateEnd();
+		}
+);
+
+bool shouldAdvance = true;
+bool advanced = sm.transitNextIfCondition(shouldAdvance); // true, Idle -> Running
+
+shouldAdvance = false;
+bool blocked = sm.transitNextIfCondition(shouldAdvance); // false, state unchanged
+```
+
+## Example with transitNextIfState()
+
+```cpp
+enum class MyState : uint8_t { Idle, Running, Paused };
+
+// continuing from previous example where state is Running
+bool wrongState = sm.transitNextIfState(MyState::Idle); // false
+bool rightState = sm.transitNextIfState(MyState::Running); // true, Running -> Paused
+```
+
+## Example with transitNextIfConditionAndState()
+
+```cpp
+enum class MyState : uint8_t { Idle, Running, Paused };
+
+SimpleStateMachine<MyState> sm(
+		MyState::Idle,
+		SimpleStateMachineCallbackStart(MyState) {
+				SimpleStateMachineAllowedTransition(MyState::Idle, MyState::Running);
+				SimpleStateMachineAllowedTransition(MyState::Running, MyState::Paused);
+				SimpleStateMachineAllowedTransitionsEnd();
+		},
+		SimpleStateMachineNextStateCallbackStart(MyState) {
+				SimpleStateMachineNextState(MyState::Idle, MyState::Running);
+				SimpleStateMachineNextState(MyState::Running, MyState::Paused);
+				SimpleStateMachineNextStateEnd();
+		}
+);
+
+bool permit = true;
+bool movedToRunning = sm.transitNextIfConditionAndState(permit, MyState::Idle); // true
+bool blockedByState = sm.transitNextIfConditionAndState(true, MyState::Idle); // false
+bool movedToPaused = sm.transitNextIfConditionAndState(true, MyState::Running); // true
+```
+
 ## Testing
 
 This repository includes Unity-based tests in:
@@ -327,6 +409,9 @@ pio test -e local
 - `transitIfState()` first checks current state equality, then applies normal `transit()` rules.
 - `transitIfCondition()` first checks the boolean condition, then applies normal `transit()` rules.
 - `transitIfConditionAndState()` checks both condition and current state before applying normal `transit()` rules.
+- `transitNextIfCondition()` checks condition and next-state callback before applying normal `transit()` rules.
+- `transitNextIfState()` checks expected state and next-state callback before applying normal `transit()` rules.
+- `transitNextIfConditionAndState()` checks condition, expected state, and next-state callback before applying normal `transit()` rules.
 - `stateChangedCallback` uses a function pointer type, so capturing lambdas are not accepted.
 - `stateChangedCallback` is invoked in the successful validated-transition path.
 - `forceState()` bypasses transition checks and should be used carefully.

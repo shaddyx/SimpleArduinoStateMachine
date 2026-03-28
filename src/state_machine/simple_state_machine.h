@@ -119,6 +119,36 @@ public:
         }
         return false; // No next state callback defined
     }
+
+    bool transitNextIfCondition(bool condition)
+    {
+        if (condition && nextStateCallback)
+        {
+            T newState = nextStateCallback(state);
+            return transit(newState);
+        }
+        return false; // Condition not met or no next state callback defined
+    }
+
+    bool transitNextIfState(T expectedCurrentState)
+    {
+        if (state == expectedCurrentState && nextStateCallback)
+        {
+            T newState = nextStateCallback(state);
+            return transit(newState);
+        }
+        return false; // Current state does not match expected state or no next state callback defined
+    }
+
+    bool transitNextIfConditionAndState(bool condition, T expectedCurrentState)
+    {
+        if (condition && state == expectedCurrentState && nextStateCallback)
+        {
+            T newState = nextStateCallback(state);
+            return transit(newState);
+        }
+        return false; // Condition not met, current state does not match expected state, or no next state callback defined
+    }
     
 
     T getState() const

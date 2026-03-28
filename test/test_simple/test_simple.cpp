@@ -195,6 +195,111 @@ void simple_state_transit_if_condition_and_state_test(){
     TEST_ASSERT_EQUAL(SomeState::Paused, mainStateMachine.getState());
 }
 
+void simple_state_transit_next_if_condition_test(){
+    enum class SomeState: uint8_t {
+        Idle,
+        Running,
+        Paused
+    };
+    SimpleStateMachineCallback<SomeState> transitions = SimpleStateMachineCallbackStart(SomeState) {
+        SimpleStateMachineAllowedTransition(SomeState::Idle, SomeState::Running);
+        SimpleStateMachineAllowedTransition(SomeState::Running, SomeState::Paused);
+        SimpleStateMachineAllowedTransitionsEnd();
+    };
+    SimpleStateMachine<SomeState> mainStateMachine(SomeState::Idle, transitions, SimpleStateMachineNextStateCallbackStart(SomeState) {
+        SimpleStateMachineNextState(SomeState::Idle, SomeState::Running);
+        SimpleStateMachineNextState(SomeState::Running, SomeState::Paused);
+        SimpleStateMachineNextStateEnd();
+    });
+
+    // Condition true, next transition should happen
+    TEST_ASSERT_TRUE(mainStateMachine.transitNextIfCondition(true));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+
+    // Condition false, transition blocked
+    TEST_ASSERT_FALSE(mainStateMachine.transitNextIfCondition(false));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+
+    // Without nextStateCallback, should return false
+    SimpleStateMachine<SomeState> noNextStateMachine(SomeState::Idle, transitions);
+    TEST_ASSERT_FALSE(noNextStateMachine.transitNextIfCondition(true));
+    TEST_ASSERT_EQUAL(SomeState::Idle, noNextStateMachine.getState());
+}
+
+void simple_state_transit_next_if_state_test(){
+    enum class SomeState: uint8_t {
+        Idle,
+        Running,
+        Paused
+    };
+    SimpleStateMachineCallback<SomeState> transitions = SimpleStateMachineCallbackStart(SomeState) {
+        SimpleStateMachineAllowedTransition(SomeState::Idle, SomeState::Running);
+        SimpleStateMachineAllowedTransition(SomeState::Running, SomeState::Paused);
+        SimpleStateMachineAllowedTransitionsEnd();
+    };
+    SimpleStateMachine<SomeState> mainStateMachine(SomeState::Idle, transitions, SimpleStateMachineNextStateCallbackStart(SomeState) {
+        SimpleStateMachineNextState(SomeState::Idle, SomeState::Running);
+        SimpleStateMachineNextState(SomeState::Running, SomeState::Paused);
+        SimpleStateMachineNextStateEnd();
+    });
+
+    // Matching state, should transit to Running
+    TEST_ASSERT_TRUE(mainStateMachine.transitNextIfState(SomeState::Idle));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+
+    // Mismatching expected state, should fail
+    TEST_ASSERT_FALSE(mainStateMachine.transitNextIfState(SomeState::Idle));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+
+    // Matching current state, should transit to Paused
+    TEST_ASSERT_TRUE(mainStateMachine.transitNextIfState(SomeState::Running));
+    TEST_ASSERT_EQUAL(SomeState::Paused, mainStateMachine.getState());
+
+    // Without nextStateCallback, should return false
+    SimpleStateMachine<SomeState> noNextStateMachine(SomeState::Idle, transitions);
+    TEST_ASSERT_FALSE(noNextStateMachine.transitNextIfState(SomeState::Idle));
+    TEST_ASSERT_EQUAL(SomeState::Idle, noNextStateMachine.getState());
+}
+
+void simple_state_transit_next_if_condition_and_state_test(){
+    enum class SomeState: uint8_t {
+        Idle,
+        Running,
+        Paused
+    };
+    SimpleStateMachineCallback<SomeState> transitions = SimpleStateMachineCallbackStart(SomeState) {
+        SimpleStateMachineAllowedTransition(SomeState::Idle, SomeState::Running);
+        SimpleStateMachineAllowedTransition(SomeState::Running, SomeState::Paused);
+        SimpleStateMachineAllowedTransitionsEnd();
+    };
+    SimpleStateMachine<SomeState> mainStateMachine(SomeState::Idle, transitions, SimpleStateMachineNextStateCallbackStart(SomeState) {
+        SimpleStateMachineNextState(SomeState::Idle, SomeState::Running);
+        SimpleStateMachineNextState(SomeState::Running, SomeState::Paused);
+        SimpleStateMachineNextStateEnd();
+    });
+
+    // All checks pass
+    TEST_ASSERT_TRUE(mainStateMachine.transitNextIfConditionAndState(true, SomeState::Idle));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+
+    // Condition false
+    TEST_ASSERT_FALSE(mainStateMachine.transitNextIfConditionAndState(false, SomeState::Running));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+
+    // State mismatch
+    TEST_ASSERT_FALSE(mainStateMachine.transitNextIfConditionAndState(true, SomeState::Idle));
+    TEST_ASSERT_EQUAL(SomeState::Running, mainStateMachine.getState());
+
+    // Condition and state match
+    TEST_ASSERT_TRUE(mainStateMachine.transitNextIfConditionAndState(true, SomeState::Running));
+    TEST_ASSERT_EQUAL(SomeState::Paused, mainStateMachine.getState());
+
+    // Without nextStateCallback, should return false
+    SimpleStateMachine<SomeState> noNextStateMachine(SomeState::Idle, transitions);
+    TEST_ASSERT_FALSE(noNextStateMachine.transitNextIfConditionAndState(true, SomeState::Idle));
+    TEST_ASSERT_EQUAL(SomeState::Idle, noNextStateMachine.getState());
+}
+
 void setUp(void)
 {
     ArduinoFakeReset();
@@ -209,6 +314,9 @@ int main(){
     RUN_TEST(simple_state_transit_if_state_test);
     RUN_TEST(simple_state_transit_if_condition_test);
     RUN_TEST(simple_state_transit_if_condition_and_state_test);
+    RUN_TEST(simple_state_transit_next_if_condition_test);
+    RUN_TEST(simple_state_transit_next_if_state_test);
+    RUN_TEST(simple_state_transit_next_if_condition_and_state_test);
     UNITY_END();
     return 0;
 }
